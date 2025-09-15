@@ -1,0 +1,9 @@
+functions-framework
+flask
+google-cloud-aiplatform
+markdown
+beautifulsoup4
+google-cloud-logging>=3.10.0
+selectolax
+lxml
+google-genai>=0.3.0

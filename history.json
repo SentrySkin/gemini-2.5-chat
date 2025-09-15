@@ -1,0 +1,26 @@
+[
+  {
+    "role": "user",
+    "text": "hi"
+  },
+  {
+    "role": "assistant",
+    "text": "[No response]"
+  },
+  {
+    "role": "user",
+    "text": "hi"
+  },
+  {
+    "role": "assistant",
+    "text": "Hi there! I'm so glad you reached out. I'm here to help you explore your passion for beauty. What makes you interested in an esthetics school? I'd love to hear what drives you!"
+  },
+  {
+    "role": "user",
+    "text": "what course available in NJ"
+  },
+  {
+    "role": "assistant",
+    "text": "We offer exciting courses in New Jersey, including Skin Care, Cosmetology, Manicure, and Barbering. The next available start date for these programs is September 8, 2025. All students pay a $100 registration fee for any program. We'd love to hear what sparks your interest in these beauty fields!"
+  }
+]
