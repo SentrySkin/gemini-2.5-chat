@@ -1,6 +1,7 @@
 # main.py
 import os
 import json
+import time
 import functions_framework
 from typing import List, Dict, Any
 
@@ -21,8 +22,8 @@ from markdown import markdown as md_to_html
 from selectolax.parser import HTMLParser
 from bs4 import BeautifulSoup
 
-from systemprompt import systemprompt
-
+# Import the dynamic system prompt function (without RAG context)
+from systemprompt import get_system_prompt_for_request
 
 # -----------------------------
 # Config
@@ -31,8 +32,8 @@ PROJECT_ID = os.getenv("GCP_PROJECT", "christinevalmy")
 LOCATION = os.getenv("FUNCTION_REGION", "us-central1")
 MODEL_NAME = os.getenv("MODEL_NAME", "gemini-2.5-flash")
 MAX_OUTPUT_TOKENS = int(os.getenv("MAX_OUTPUT_TOKENS", "1000"))
-TEMPERATURE = float(os.getenv("TEMPERATURE", "0.8"))
-TOP_P = float(os.getenv("TOP_P", "0.5"))
+TEMPERATURE = float(os.getenv("TEMPERATURE", "0.2"))
+TOP_P = float(os.getenv("TOP_P", "0.8"))
 
 VERTEX_SEARCH_ENGINE = os.getenv(
     "VERTEX_SEARCH_ENGINE",
@@ -107,6 +108,8 @@ def normalize_history_to_genai(history: List[Dict[str, Any]]) -> List[Content]:
 # -----------------------------
 @functions_framework.http
 def app(request):
+    start_time = time.time()
+    
     try:
         data = request.get_json(silent=True) or {}
         # Accept "message" or "query"
@@ -131,7 +134,7 @@ def app(request):
 
         # Build chat history for google-genai
         contents: List[Content] = normalize_history_to_genai(history_in)
-        # Current user turn (DO NOT embed system prompt here; system_prompt goes in system_instruction)
+        # Current user turn
         contents.append(Content(role="user", parts=[Part(text=user_message)]))
 
         # Tool: Vertex AI Search
@@ -141,9 +144,15 @@ def app(request):
             )
         )
 
-        # Generation config (system prompt passed as system_instruction)
+        # Generate dynamic system prompt (without RAG context)
+        dynamic_system_prompt = get_system_prompt_for_request(
+            history=history_in, 
+            user_query=user_message
+        )
+
+        # Generation config with dynamic system prompt
         config = GenerateContentConfig(
-            system_instruction=systemprompt,
+            system_instruction=dynamic_system_prompt,
             tools=[search_tool],
             temperature=TEMPERATURE,
             top_p=TOP_P,
@@ -170,6 +179,8 @@ def app(request):
 
         # Normalize markdown → plain text
         final_text = html_to_text(full_text)
+        
+        total_latency = round(time.time() - start_time, 3)
 
         # Log assistant reply
         logger.log_struct(
@@ -180,13 +191,21 @@ def app(request):
                 "message": final_text,
                 "role": "assistant",
                 "model": MODEL_NAME,
+                "total_latency": total_latency,
             },
             severity="INFO",
         )
 
-        return jsonify({"response": final_text, "status_code": 200})
+        return jsonify({
+            "response": final_text, 
+            "status_code": 200,
+            "model": MODEL_NAME,
+            "total_latency": total_latency
+        })
 
     except Exception as e:
+        total_latency = round(time.time() - start_time, 3)
+        
         # best-effort logging even if parsing failed
         try:
             body = request.get_json(silent=True) or {}
@@ -201,7 +220,8 @@ def app(request):
                 "user_id": uid,
                 "thread_id": tid,
                 "error": str(e),
+                "total_latency": total_latency,
             },
             severity="ERROR",
         )
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e), "total_latency": total_latency}), 500
