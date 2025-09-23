@@ -23,7 +23,7 @@ from selectolax.parser import HTMLParser
 from bs4 import BeautifulSoup
 
 # Import the dynamic system prompt function (without RAG context)
-from systemprompt import get_system_prompt_for_request
+from sophia_prompt import get_system_prompt_for_request
 
 # -----------------------------
 # Config
